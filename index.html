@@ -195,8 +195,8 @@
     <div class="card">
       <div class="card-title"><span class="icon">🏗️</span> 前回点検以降の補修</div>
       <div class="form-stack">
-        <div class="form-group"><label>補修の有無</label><select id="prevRepair" onchange="toggleRepairDetail()"><option value="-">-</option><option>有</option><option>無</option></select></div>
-        <div class="form-group conditional-field" id="repairDetailWrap">
+        <div class="form-group"><label>補修の有無</label><select id="prevRepair"><option value="-">-</option><option>有</option><option>無</option></select></div>
+        <div class="form-group">
           <label>補修内容</label>
           <div class="input-with-voice">
             <textarea id="repairDetail" rows="3">-</textarea>
@@ -228,6 +228,18 @@
             <button class="voice-btn" onclick="startVoice('commonRemarks2')" title="音声入力">🎤</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📓</span> メモ・備忘録</div>
+      <div class="memo-grid">
+        <div class="form-group"><label>床組み</label><textarea id="memo_yukagumi" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>床版</label><textarea id="memo_shouban" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>支承</label><textarea id="memo_shishou" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>下部構造</label><textarea id="memo_kabu" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>橋面</label><textarea id="memo_kyoumen" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>その他</label><textarea id="memo_other" rows="2" placeholder="自由記載"></textarea></div>
       </div>
     </div>
   </div>
@@ -425,24 +437,11 @@ function buildDamageBlock(num){
         </div>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-title"><span class="icon">📓</span> メモ・備忘録</div>
-      <div class="memo-grid">
-        <div class="form-group"><label>床組み</label><textarea id="${p}_memo_yukagumi" rows="2" placeholder="自由記載"></textarea></div>
-        <div class="form-group"><label>床版</label><textarea id="${p}_memo_shouban" rows="2" placeholder="自由記載"></textarea></div>
-        <div class="form-group"><label>支承</label><textarea id="${p}_memo_shishou" rows="2" placeholder="自由記載"></textarea></div>
-        <div class="form-group"><label>下部構造</label><textarea id="${p}_memo_kabu" rows="2" placeholder="自由記載"></textarea></div>
-        <div class="form-group"><label>橋面</label><textarea id="${p}_memo_kyoumen" rows="2" placeholder="自由記載"></textarea></div>
-        <div class="form-group"><label>その他</label><textarea id="${p}_memo_other" rows="2" placeholder="自由記載"></textarea></div>
-      </div>
-    </div>
   </div>`;
 }
 
 // ── Helpers ──
 function toggleOther(sel,otherId){const w=document.getElementById(otherId+'_wrap');if(w)w.classList.toggle('visible',sel.value==='その他')}
-function toggleRepairDetail(){document.getElementById('repairDetailWrap').classList.toggle('visible',document.getElementById('prevRepair').value==='有')}
 
 // ── Voice with structured line breaks ──
 let recognition=null;
@@ -517,7 +516,10 @@ function collectFormData(){
       thirdPartyPrev:get('thirdPartyPrev'),saltDamage:get('saltDamage'),
       inspRelRemarks:get('inspRelRemarks'),
       prevRepair:get('prevRepair'),repairDetail:get('repairDetail'),
-      inspectionMethod:get('inspectionMethod'),remarks2:get('commonRemarks2')
+      inspectionMethod:get('inspectionMethod'),remarks2:get('commonRemarks2'),
+      memo_yukagumi:get('memo_yukagumi'),memo_shouban:get('memo_shouban'),
+      memo_shishou:get('memo_shishou'),memo_kabu:get('memo_kabu'),
+      memo_kyoumen:get('memo_kyoumen'),memo_other:get('memo_other')
     },
     block1:collectBlock('b1'),
     block2:collectBlock('b2')
@@ -534,10 +536,7 @@ function collectBlock(p){
     event2:get(p+'_event2'),event2_other:get(p+'_event2_other'),
     situation1:get(p+'_situation1'),situation1_other:get(p+'_situation1_other'),
     situation2:get(p+'_situation2'),situation2_other:get(p+'_situation2_other'),
-    loadCapacity:get(p+'_loadCapacity'),measure1:get(p+'_measure1'),measure2:get(p+'_measure2'),
-    memo_yukagumi:get(p+'_memo_yukagumi'),memo_shouban:get(p+'_memo_shouban'),
-    memo_shishou:get(p+'_memo_shishou'),memo_kabu:get(p+'_memo_kabu'),
-    memo_kyoumen:get(p+'_memo_kyoumen'),memo_other:get(p+'_memo_other')
+    loadCapacity:get(p+'_loadCapacity'),measure1:get(p+'_measure1'),measure2:get(p+'_measure2')
   };
 }
 
@@ -546,9 +545,9 @@ function populateForm(rec){
   const c=rec.common;
   ['inspectionDate','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
    'photoBottom','photoDeck','photoOther','photoOtherNote','thirdPartyPrev','saltDamage',
-   'inspRelRemarks','prevRepair','repairDetail','inspectionMethod'].forEach(k=>set(k,c[k]));
+   'inspRelRemarks','prevRepair','repairDetail','inspectionMethod',
+   'memo_yukagumi','memo_shouban','memo_shishou','memo_kabu','memo_kyoumen','memo_other'].forEach(k=>set(k,c[k]));
   set('commonRemarks2',c.remarks2);
-  if(c.prevRepair==='有')document.getElementById('repairDetailWrap')?.classList.add('visible');
   populateBlock('b1',rec.block1);populateBlock('b2',rec.block2);
 }
 function populateBlock(p,b){
