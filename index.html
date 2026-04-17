@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="橋梁点検">
+<meta name="theme-color" content="#1a5276">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>橋梁点検記録</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+  :root {
+    --primary:#1a5276;--primary-light:#2980b9;--accent:#e67e22;--danger:#c0392b;
+    --bg:#f0f2f5;--card:#fff;--text:#2c3e50;--text-light:#7f8c8d;--border:#dce1e6;
+    --input-bg:#f8f9fa;--shadow:0 1px 4px rgba(0,0,0,.06);--radius:12px;
+    --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{height:-webkit-fill-available}
+  body{font-family:'Noto Sans JP',-apple-system,'Hiragino Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%;min-height:100vh;min-height:-webkit-fill-available;padding-bottom:calc(60px + var(--safe-bottom));overflow-x:hidden}
+  .app-header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:calc(var(--safe-top)+10px) 16px 10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(26,82,118,.25)}
+  .header-row{display:flex;justify-content:space-between;align-items:center}
+  .app-header h1{font-size:16px;font-weight:700;letter-spacing:.3px}
+  .header-actions{display:flex;gap:6px}
+  .header-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+  .header-btn:active{background:rgba(255,255,255,.35)}
+  .header-btn.export{background:var(--accent);border-color:var(--accent)}
+  .status-bar{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;opacity:.8}
+  .status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;background:#2ecc71}
+  .tab-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:.5px solid rgba(0,0,0,.12);display:flex;padding-bottom:var(--safe-bottom);z-index:200}
+  .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;font-size:10px;font-weight:500;color:#999;border:none;background:transparent;cursor:pointer;font-family:inherit;gap:2px}
+  .tab-item .tab-icon{font-size:22px;line-height:1}
+  .tab-item.active{color:var(--primary)}
+  .container{max-width:100%;padding:12px 14px}
+  .tab-content{display:none}.tab-content.active{display:block}
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .card-title{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:6px}
+  .card-title .icon{font-size:16px}
+  .form-stack{display:flex;flex-direction:column;gap:14px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-row-3-1{display:grid;grid-template-columns:3fr 1fr;gap:10px}
+  .form-group{display:flex;flex-direction:column}
+  .form-group label{font-size:11px;font-weight:600;color:var(--text-light);margin-bottom:4px;letter-spacing:.2px}
+  .form-group label .req{color:var(--danger)}
+  input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:var(--input-bg);color:var(--text);-webkit-appearance:none;appearance:none}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(41,128,185,.12);background:#fff}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237f8c8d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  textarea{resize:none;min-height:80px;font-size:16px}
+  .input-with-voice{position:relative}
+  .input-with-voice textarea{padding-right:50px}
+  .voice-btn{position:absolute;right:8px;bottom:8px;width:38px;height:38px;border-radius:50%;border:none;background:var(--primary-light);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(41,128,185,.3)}
+  .voice-btn:active{transform:scale(.92)}
+  .voice-btn.recording{background:var(--danger);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,.4)}50%{box-shadow:0 0 0 10px rgba(192,57,43,0)}}
+  .photo-inline{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:end}
+  .photo-inline select{width:auto;min-width:90px}
+  .photo-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .photo-row .form-group label{font-size:10px}
+  .block-toggle{display:flex;gap:6px;margin-bottom:14px;background:var(--card);border-radius:var(--radius);padding:4px;box-shadow:var(--shadow)}
+  .block-btn{flex:1;padding:10px;border:none;border-radius:9px;background:transparent;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;color:var(--text-light)}
+  .block-btn.active{background:var(--primary);color:#fff;box-shadow:0 2px 6px rgba(26,82,118,.3)}
+  .record-item{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--card);border-radius:var(--radius);margin-bottom:8px;box-shadow:var(--shadow)}
+  .record-item:active{transform:scale(.98)}
+  .record-info{flex:1;min-width:0}
+  .record-info .date{font-size:11px;color:var(--text-light)}
+  .record-info .title{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .record-info .subtitle{font-size:11px;color:var(--text-light);margin-top:2px}
+  .record-actions{display:flex;gap:6px;margin-left:8px;flex-shrink:0}
+  .record-actions button{width:36px;height:36px;border-radius:8px;border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .btn-edit{background:#ebf5fb;color:var(--primary-light)}
+  .btn-delete{background:#fdedec;color:var(--danger)}
+  .toast{position:fixed;bottom:calc(70px + var(--safe-bottom));left:16px;right:16px;background:var(--text);color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:500;z-index:300;text-align:center;transform:translateY(120px);transition:transform .3s cubic-bezier(.34,1.56,.64,1);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+  .toast.show{transform:translateY(0)}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-light)}
+  .empty-state .icon{font-size:40px;margin-bottom:10px}
+  .conditional-field{display:none}.conditional-field.visible{display:flex}
+  .section-sep{height:1px;background:var(--border);margin:2px 0}
+  .fab-new{position:fixed;bottom:calc(72px + var(--safe-bottom));right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:26px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(230,126,34,.4);z-index:150}
+  .fab-new:active{transform:scale(.9)}
+  .fab-new.visible{display:flex}
+  .manage-link{font-size:11px;color:var(--primary-light);cursor:pointer;text-decoration:underline;margin-left:6px}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center}
+  .modal-overlay.show{display:flex}
+  .modal{background:#fff;border-radius:16px;padding:20px;width:90%;max-width:360px;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+  .modal h3{font-size:15px;margin-bottom:12px;color:var(--primary)}
+  .modal .list-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .modal .list-item:last-child{border-bottom:none}
+  .modal .add-row{display:flex;gap:8px;margin-top:10px}
+  .modal .add-row input{flex:1;font-size:15px;padding:8px 10px}
+  .modal .add-btn,.modal .close-btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:600}
+  .modal .add-btn{background:var(--primary);color:#fff}
+  .modal .close-btn{background:var(--border);color:var(--text);margin-top:10px;width:100%}
+  .modal .del-btn{background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;padding:4px 8px}
+  /* Memo mini fields */
+  .memo-grid{display:flex;flex-direction:column;gap:10px}
+  .memo-grid .form-group textarea{min-height:50px;font-size:15px}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-row">
+    <h1>🌉 橋梁点検記録</h1>
+    <div class="header-actions">
+      <button class="header-btn" onclick="saveCurrentRecord()">💾 保存</button>
+      <button class="header-btn export" onclick="exportJSON()">📤 出力</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span><span class="status-dot"></span>ローカル保存</span>
+    <span id="recordCount">0件</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══════════ 共通項目 ══════════ -->
+  <div class="tab-content active" id="tab-common">
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> 基本情報</div>
+      <div class="form-stack">
+        <div class="form-row">
+          <div class="form-group"><label>診断年月日 <span class="req">*</span></label><input type="date" id="inspectionDate"></div>
+          <div class="form-group"><label>天候</label><select id="weather"><option value="">選択</option><option>晴れ</option><option>曇り</option><option>雨</option></select></div>
+        </div>
+        <div class="form-group">
+          <label>橋梁診断員名 <span class="manage-link" onclick="openModal()">編集</span></label>
+          <select id="inspector"><option value="">選択してください</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🚨</span> 速報・緊急対応</div>
+      <div class="form-stack">
+        <div class="form-group">
+          <label>現地診断日報からの速報</label>
+          <select id="quickReport">
+            <option value="">選択してください</option>
+            <option>予防保全の観点から、措置を講ずることが望ましい状態</option>
+            <option>橋梁構造の安全性の観点から、早期に措置を講ずべき状態</option>
+            <option>緊急に措置を講ずべき状態</option>
+            <option>予防保全および第三者被害予防の観点から、措置を講ずることが望ましい状態</option>
+            <option>第三者被害予防の観点から、措置を講ずることが望ましい状態</option>
+            <option>第三者被害予防の観点から、早期に措置を講ずべき状態</option>
+            <option>橋梁利用者の安全性確保の観点から早期の措置が必要</option>
+            <option>道路橋の機能に支障が生じていない状態</option>
+          </select>
+        </div>
+        <div class="form-group"><label>緊急対応の必要性</label><select id="urgency"><option value="">選択</option><option>有</option><option>無</option></select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📷</span> 写真番号</div>
+      <div class="form-stack">
+        <div class="form-group">
+          <label>側面</label>
+          <div class="photo-inline">
+            <select id="photoSideDir"><option value="右">右が起点</option><option value="左">左が起点</option></select>
+            <input type="text" id="photoSide" placeholder="写真番号">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>下面</label><input type="text" id="photoBottom" placeholder="写真番号"></div>
+          <div class="form-group"><label>橋面</label><input type="text" id="photoDeck" placeholder="写真番号"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>その他（番号）</label><input type="text" id="photoOther" placeholder="写真番号"></div>
+          <div class="form-group"><label>その他（記載）</label><input type="text" id="photoOtherNote" placeholder="自由記載"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🔧</span> 点検関連</div>
+      <div class="form-stack">
+        <div class="form-row">
+          <div class="form-group"><label>第三者被害予防措置</label><select id="thirdPartyPrev"><option value="無">無</option><option>有</option><option>対象外</option></select></div>
+          <div class="form-group"><label>塩害特定点検</label><select id="saltDamage"><option value="対象外">対象外</option><option>有</option><option>無</option></select></div>
+        </div>
+        <div class="form-group">
+          <label>備考（点検関連）</label>
+          <div class="input-with-voice">
+            <textarea id="inspRelRemarks" rows="2">-</textarea>
+            <button class="voice-btn" onclick="startVoice('inspRelRemarks')" title="音声入力">🎤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🏗️</span> 前回点検以降の補修</div>
+      <div class="form-stack">
+        <div class="form-group"><label>補修の有無</label><select id="prevRepair" onchange="toggleRepairDetail()"><option value="-">-</option><option>有</option><option>無</option></select></div>
+        <div class="form-group conditional-field" id="repairDetailWrap">
+          <label>補修内容</label>
+          <div class="input-with-voice">
+            <textarea id="repairDetail" rows="3">-</textarea>
+            <button class="voice-btn" onclick="startVoice('repairDetail')" title="音声入力">🎤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📝</span> 備考</div>
+      <div class="form-stack">
+        <div class="form-group">
+          <label>備考（診断方法）</label>
+          <select id="inspectionMethod">
+            <option value="">選択してください</option>
+            <option>地上・梯子による現地診断</option>
+            <option>橋梁点検車等による現地診断</option>
+            <option>リフト車等による現地診断</option>
+            <option>軌陸車等による現地診断</option>
+            <option>船等による現地診断</option>
+            <option>足場等による現地診断</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>備考</label>
+          <div class="input-with-voice">
+            <textarea id="commonRemarks2" placeholder="自由記載" rows="2"></textarea>
+            <button class="voice-btn" onclick="startVoice('commonRemarks2')" title="音声入力">🎤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 損傷データ ══════════ -->
+  <div class="tab-content" id="tab-damage">
+    <div class="block-toggle">
+      <button class="block-btn active" onclick="switchBlock(1, this)">写真番号①</button>
+      <button class="block-btn" onclick="switchBlock(2, this)">写真番号②</button>
+    </div>
+    <div id="damageBlocks"></div>
+  </div>
+
+  <!-- ══════════ 保存一覧 ══════════ -->
+  <div class="tab-content" id="tab-records">
+    <div id="recordList"><div class="empty-state"><div class="icon">📂</div><p>保存された記録はありません</p></div></div>
+  </div>
+</div>
+
+<nav class="tab-bar">
+  <button class="tab-item active" onclick="switchTab('common',this)"><span class="tab-icon">📋</span><span>共通</span></button>
+  <button class="tab-item" onclick="switchTab('damage',this)"><span class="tab-icon">⚠️</span><span>損傷</span></button>
+  <button class="tab-item" onclick="switchTab('records',this)"><span class="tab-icon">📂</span><span>一覧</span></button>
+</nav>
+<button class="fab-new" id="fabNew" onclick="newRecord()">＋</button>
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="inspectorModal">
+  <div class="modal">
+    <h3>橋梁診断員の管理</h3>
+    <div id="inspectorList"></div>
+    <div class="add-row"><input type="text" id="newInspectorName" placeholder="名前を入力"><button class="add-btn" onclick="addInspector()">追加</button></div>
+    <button class="close-btn" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='bridge_inspection_records', INSPECTOR_KEY='bridge_inspectors';
+let records=[], editingId=null;
+
+// ── Inspectors ──
+function loadInspectors(){try{return JSON.parse(localStorage.getItem(INSPECTOR_KEY))||[]}catch{return[]}}
+function saveInspectors(l){localStorage.setItem(INSPECTOR_KEY,JSON.stringify(l))}
+function refreshInspectorSelect(){
+  const sel=document.getElementById('inspector'),cur=sel.value,list=loadInspectors();
+  sel.innerHTML='<option value="">選択してください</option>'+list.map(n=>`<option>${n}</option>`).join('');
+  if(list.includes(cur))sel.value=cur;
+}
+function openModal(){document.getElementById('inspectorModal').classList.add('show');renderInspectorList()}
+function closeModal(){document.getElementById('inspectorModal').classList.remove('show')}
+function renderInspectorList(){
+  const list=loadInspectors();
+  document.getElementById('inspectorList').innerHTML=list.length
+    ?list.map((n,i)=>`<div class="list-item"><span>${n}</span><button class="del-btn" onclick="removeInspector(${i})">✕</button></div>`).join('')
+    :'<p style="color:#999;font-size:13px;padding:8px 0;">登録されていません</p>';
+}
+function addInspector(){
+  const input=document.getElementById('newInspectorName'),name=input.value.trim();
+  if(!name)return;const list=loadInspectors();
+  if(!list.includes(name)){list.push(name);saveInspectors(list)}
+  input.value='';renderInspectorList();refreshInspectorSelect();
+}
+function removeInspector(i){const list=loadInspectors();list.splice(i,1);saveInspectors(list);renderInspectorList();refreshInspectorSelect()}
+
+// ── Damage Block Builder ──
+function buildDamageBlock(num){
+  const p='b'+num;
+  const findingsPlaceholder=`◇"部材"の"損傷の種類"\n・損傷の状態\n・損傷の原因\n・損傷の進行性（音声入力可）`;
+  return `
+  <div class="damage-block" id="block-${num}" style="${num===2?'display:none':''}">
+    <div class="card">
+      <div class="card-title"><span class="icon">🔩</span> 部材情報</div>
+      <div class="form-stack">
+        <div class="form-group"><label>径間番号</label><input type="text" id="${p}_spanNo" placeholder="例: 1"></div>
+        <div class="form-group">
+          <label>構成要素</label>
+          <select id="${p}_component">
+            <option value="">選択</option>
+            <option>上部構造</option><option>上下部接続部</option><option>下部構造</option>
+            <option>フェールセーフ</option><option>伸縮装置</option><option>その他構造</option><option>-</option>
+          </select>
+        </div>
+        <div class="form-row-3-1">
+          <div class="form-group"><label>部材</label><input type="text" id="${p}_member" placeholder="例: 主桁"></div>
+          <div class="form-group"><label>要素番号</label><input type="text" id="${p}_elementNo" maxlength="4" placeholder="0001" inputmode="numeric"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">⚠️</span> 判定</div>
+      <div class="form-stack">
+        <div class="form-row">
+          <div class="form-group"><label>緊急対応の必要性</label><select id="${p}_emergency"><option value="無" selected>無</option><option>有</option></select></div>
+          <div class="form-group"><label>第三者等への影響</label><select id="${p}_thirdParty"><option value="無" selected>無</option><option>有</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>詳細調査の必要性</label><select id="${p}_detailInsp"><option value="無" selected>無</option><option>有</option></select></div>
+          <div class="form-group"><label>追跡調査の必要性</label><select id="${p}_followUp"><option value="無" selected>無</option><option>有</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🖼️</span> 写真番号</div>
+      <div class="photo-row">
+        <div class="form-group"><label>写真1</label><input type="text" id="${p}_photo1" inputmode="numeric"></div>
+        <div class="form-group"><label>写真2</label><input type="text" id="${p}_photo2" inputmode="numeric"></div>
+        <div class="form-group"><label>写真3</label><input type="text" id="${p}_photo3" inputmode="numeric"></div>
+        <div class="form-group"><label>写真4</label><input type="text" id="${p}_photo4" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> 所見</div>
+      <div class="form-group">
+        <div class="input-with-voice">
+          <textarea id="${p}_findings" placeholder="${findingsPlaceholder}" rows="6"></textarea>
+          <button class="voice-btn" onclick="startVoice('${p}_findings')" title="音声入力">🎤</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🏗️</span> 特定事象・想定する状況</div>
+      <div class="form-stack">
+        <div class="form-row">
+          <div class="form-group"><label>特定事象 1</label>
+            <select id="${p}_event1" onchange="toggleOther(this,'${p}_event1_other')">
+              <option value="">選択</option><option>疲労</option><option>塩害</option><option>ASR</option>
+              <option>防食</option><option>洗堀</option><option>伸縮装置漏水</option><option>その他</option>
+            </select></div>
+          <div class="form-group"><label>特定事象 2</label>
+            <select id="${p}_event2" onchange="toggleOther(this,'${p}_event2_other')">
+              <option value="">選択</option><option>疲労</option><option>塩害</option><option>ASR</option>
+              <option>防食</option><option>洗堀</option><option>伸縮装置漏水</option><option>その他</option>
+            </select></div>
+        </div>
+        <div class="form-group conditional-field" id="${p}_event1_other_wrap"><label>特定事象1（その他）</label><input type="text" id="${p}_event1_other"></div>
+        <div class="form-group conditional-field" id="${p}_event2_other_wrap"><label>特定事象2（その他）</label><input type="text" id="${p}_event2_other"></div>
+        <div class="section-sep"></div>
+        <div class="form-row">
+          <div class="form-group"><label>想定する状況 1</label>
+            <select id="${p}_situation1" onchange="toggleOther(this,'${p}_situation1_other')">
+              <option value="">選択</option><option>活荷重</option><option>地震</option><option>豪雨・出水</option><option>その他</option>
+            </select></div>
+          <div class="form-group"><label>想定する状況 2</label>
+            <select id="${p}_situation2" onchange="toggleOther(this,'${p}_situation2_other')">
+              <option value="">選択</option><option>活荷重</option><option>地震</option><option>豪雨・出水</option><option>その他</option>
+            </select></div>
+        </div>
+        <div class="form-group conditional-field" id="${p}_situation1_other_wrap"><label>想定する状況1（その他）</label><input type="text" id="${p}_situation1_other"></div>
+        <div class="form-group conditional-field" id="${p}_situation2_other_wrap"><label>想定する状況2（その他）</label><input type="text" id="${p}_situation2_other"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> 評価</div>
+      <div class="form-stack">
+        <div class="form-group">
+          <label>耐荷性能評価</label>
+          <select id="${p}_loadCapacity">
+            <option value="">選択</option>
+            <option>耐荷性能の低下が生じる可能性は低い。</option>
+            <option>耐荷性能の低下が生じる可能性があるが致命的な状態となる可能性は低い。</option>
+            <option>耐荷性能が低下しているが致命的な状態となる可能性は低い。</option>
+            <option>耐荷性能が著しく低下し致命的な状態となる可能性がある。</option>
+            <option>致命的な状態と評価することが適当と判断される。</option>
+            <option>耐荷性能の評価無し。</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>措置の必要性</label>
+            <select id="${p}_measure1">
+              <option value="">選択</option>
+              <option>有</option><option>有（Ｍ）</option><option>有（Ｓ１）</option><option>有（Ｓ２）</option><option>無</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <select id="${p}_measure2">
+              <option value="">選択</option>
+              <option>予防保全の観点から、措置が必要である。</option>
+              <option>橋梁構造の安全性の観点から、速やかな措置が必要である。</option>
+              <option>維持工事等で措置が必要である。</option>
+              <option>第三者被害予防の観点から、措置が必要である。</option>
+              <option>予防保全、第三者被害予防の観点から、措置が必要である。</option>
+              <option>第三者被害予防の観点から、早期の措置が必要である。</option>
+              <option>原因究明のため、詳細調査が必要である。</option>
+              <option>進展状況把握のため、追跡調査が必要である。</option>
+              <option>原因排除の観点から措置が必要である。</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📓</span> メモ・備忘録</div>
+      <div class="memo-grid">
+        <div class="form-group"><label>床組み</label><textarea id="${p}_memo_yukagumi" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>床版</label><textarea id="${p}_memo_shouban" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>支承</label><textarea id="${p}_memo_shishou" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>下部構造</label><textarea id="${p}_memo_kabu" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>橋面</label><textarea id="${p}_memo_kyoumen" rows="2" placeholder="自由記載"></textarea></div>
+        <div class="form-group"><label>その他</label><textarea id="${p}_memo_other" rows="2" placeholder="自由記載"></textarea></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Helpers ──
+function toggleOther(sel,otherId){const w=document.getElementById(otherId+'_wrap');if(w)w.classList.toggle('visible',sel.value==='その他')}
+function toggleRepairDetail(){document.getElementById('repairDetailWrap').classList.toggle('visible',document.getElementById('prevRepair').value==='有')}
+
+// ── Voice with structured line breaks ──
+let recognition=null;
+function startVoice(targetId){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast('⚠️ 音声入力非対応');return}
+  const btn=event.target.closest('.voice-btn');
+  if(recognition){recognition.stop();recognition=null;btn.classList.remove('recording');return}
+  recognition=new SR();
+  recognition.lang='ja-JP';recognition.continuous=true;recognition.interimResults=true;
+  btn.classList.add('recording');
+  let finalT='';
+  const target=document.getElementById(targetId);
+  const existing=(target.value==='-'?'':target.value);
+
+  // Keywords that trigger line breaks for structured findings input
+  const breakKeywords=['損傷の状態','損傷の原因','損傷の進行性','損傷の種類','次','改行','新しい行'];
+
+  recognition.onresult=(e)=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal){
+        let text=e.results[i][0].transcript;
+        // Insert line break when keyword detected
+        breakKeywords.forEach(kw=>{
+          const idx=text.indexOf(kw);
+          if(idx>0) text=text.substring(0,idx)+'\n・'+text.substring(idx);
+        });
+        // Voice command: "改行" or "次" inserts newline
+        text=text.replace(/改行|次へ/g,'\n');
+        finalT+=text;
+      } else {
+        interim+=e.results[i][0].transcript;
+      }
+    }
+    target.value=existing+(existing?'\n':'')+finalT+interim;
+  };
+  recognition.onerror=()=>{btn.classList.remove('recording');recognition=null};
+  recognition.onend=()=>{btn.classList.remove('recording');recognition=null};
+  recognition.start();
+}
+
+// ── Tab/Block ──
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const fab=document.getElementById('fabNew');
+  if(tab==='records'){renderRecordList();fab.classList.add('visible')}else fab.classList.remove('visible');
+  window.scrollTo(0,0);
+}
+function switchBlock(num,btn){
+  document.querySelectorAll('.damage-block').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.block-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('block-'+num).style.display='block';
+  if(btn)btn.classList.add('active');
+}
+
+// ── Data ──
+function get(id){return document.getElementById(id)?.value||''}
+function collectFormData(){
+  return {
+    id:editingId||Date.now().toString(),
+    timestamp:new Date().toISOString(),
+    common:{
+      inspectionDate:get('inspectionDate'),weather:get('weather'),inspector:get('inspector'),
+      quickReport:get('quickReport'),urgency:get('urgency'),
+      photoSideDir:get('photoSideDir'),photoSide:get('photoSide'),
+      photoBottom:get('photoBottom'),photoDeck:get('photoDeck'),
+      photoOther:get('photoOther'),photoOtherNote:get('photoOtherNote'),
+      thirdPartyPrev:get('thirdPartyPrev'),saltDamage:get('saltDamage'),
+      inspRelRemarks:get('inspRelRemarks'),
+      prevRepair:get('prevRepair'),repairDetail:get('repairDetail'),
+      inspectionMethod:get('inspectionMethod'),remarks2:get('commonRemarks2')
+    },
+    block1:collectBlock('b1'),
+    block2:collectBlock('b2')
+  };
+}
+function collectBlock(p){
+  return {
+    spanNo:get(p+'_spanNo'),component:get(p+'_component'),member:get(p+'_member'),elementNo:get(p+'_elementNo'),
+    emergency:get(p+'_emergency'),thirdParty:get(p+'_thirdParty'),
+    detailInsp:get(p+'_detailInsp'),followUp:get(p+'_followUp'),
+    photo1:get(p+'_photo1'),photo2:get(p+'_photo2'),photo3:get(p+'_photo3'),photo4:get(p+'_photo4'),
+    findings:get(p+'_findings'),
+    event1:get(p+'_event1'),event1_other:get(p+'_event1_other'),
+    event2:get(p+'_event2'),event2_other:get(p+'_event2_other'),
+    situation1:get(p+'_situation1'),situation1_other:get(p+'_situation1_other'),
+    situation2:get(p+'_situation2'),situation2_other:get(p+'_situation2_other'),
+    loadCapacity:get(p+'_loadCapacity'),measure1:get(p+'_measure1'),measure2:get(p+'_measure2'),
+    memo_yukagumi:get(p+'_memo_yukagumi'),memo_shouban:get(p+'_memo_shouban'),
+    memo_shishou:get(p+'_memo_shishou'),memo_kabu:get(p+'_memo_kabu'),
+    memo_kyoumen:get(p+'_memo_kyoumen'),memo_other:get(p+'_memo_other')
+  };
+}
+
+function populateForm(rec){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};
+  const c=rec.common;
+  ['inspectionDate','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
+   'photoBottom','photoDeck','photoOther','photoOtherNote','thirdPartyPrev','saltDamage',
+   'inspRelRemarks','prevRepair','repairDetail','inspectionMethod'].forEach(k=>set(k,c[k]));
+  set('commonRemarks2',c.remarks2);
+  if(c.prevRepair==='有')document.getElementById('repairDetailWrap')?.classList.add('visible');
+  populateBlock('b1',rec.block1);populateBlock('b2',rec.block2);
+}
+function populateBlock(p,b){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};
+  Object.keys(b).forEach(k=>set(p+'_'+k,b[k]));
+  ['event1','event2','situation1','situation2'].forEach(f=>{
+    if(b[f]==='その他'){const w=document.getElementById(p+'_'+f+'_other_wrap');if(w)w.classList.add('visible')}
+  });
+}
+
+function clearForm(){
+  document.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(el.type==='date')el.value=new Date().toISOString().split('T')[0];
+    else if(el.id==='inspRelRemarks'||el.id==='repairDetail')el.value='-';
+    else if(el.id==='prevRepair')el.value='-';
+    else if(el.id==='photoSideDir')el.value='右';
+    else if(el.id==='thirdPartyPrev')el.value='無';
+    else if(el.id==='saltDamage')el.value='対象外';
+    else if(el.id.match(/_(emergency|thirdParty|detailInsp|followUp)$/))el.value='無';
+    else el.value='';
+  });
+  document.querySelectorAll('.conditional-field').forEach(f=>f.classList.remove('visible'));
+  editingId=null;
+}
+
+function newRecord(){clearForm();switchTab('common',document.querySelectorAll('.tab-item')[0]);showToast('✨ 新規記録')}
+
+function saveCurrentRecord(){
+  const data=collectFormData();
+  if(!data.common.inspectionDate){showToast('⚠️ 診断年月日を入力');return}
+  const idx=records.findIndex(r=>r.id===data.id);
+  if(idx>=0)records[idx]=data;else records.push(data);
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+  updateRecordCount();showToast('✅ 保存しました');clearForm();
+}
+
+function loadRecords(){try{records=JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{records=[]}updateRecordCount()}
+function updateRecordCount(){document.getElementById('recordCount').textContent=records.length+'件'}
+
+function renderRecordList(){
+  const c=document.getElementById('recordList');
+  if(!records.length){c.innerHTML='<div class="empty-state"><div class="icon">📂</div><p>保存された記録はありません</p></div>';return}
+  c.innerHTML=records.map(r=>{
+    const b1=r.block1;
+    const label=[b1.component,b1.member].filter(Boolean).join(' / ')||'未入力';
+    const urg=r.common.urgency==='有'?'<span style="color:var(--danger);font-weight:700;"> 緊急</span>':'';
+    return `<div class="record-item">
+      <div class="record-info" onclick="editRecord('${r.id}')">
+        <div class="date">${r.common.inspectionDate} ${r.common.weather||''}${urg}</div>
+        <div class="title">径間${b1.spanNo||'-'} ｜ ${label}</div>
+        <div class="subtitle">${r.common.inspector||''}</div>
+      </div>
+      <div class="record-actions">
+        <button class="btn-edit" onclick="editRecord('${r.id}')">✏️</button>
+        <button class="btn-delete" onclick="deleteRecord('${r.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function editRecord(id){
+  const rec=records.find(r=>r.id===id);if(!rec)return;
+  editingId=id;populateForm(rec);
+  switchTab('common',document.querySelectorAll('.tab-item')[0]);showToast('📝 編集モード');
+}
+function deleteRecord(id){
+  if(!confirm('この記録を削除しますか？'))return;
+  records=records.filter(r=>r.id!==id);
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+  updateRecordCount();renderRecordList();showToast('🗑️ 削除しました');
+}
+
+function exportJSON(){
+  if(!records.length){showToast('⚠️ 記録がありません');return}
+  const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='bridge_inspection_'+new Date().toISOString().split('T')[0]+'.json';
+  a.click();showToast('📤 エクスポート完了');
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+// ── Service Worker Registration ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    reg.onupdatefound=()=>{
+      const w=reg.installing;
+      w.onstatechange=()=>{
+        if(w.state==='activated'&&navigator.serviceWorker.controller){
+          showToast('🔄 アプリが更新されました');
+        }
+      };
+    };
+  }).catch(e=>console.log('SW registration failed:',e));
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('damageBlocks').innerHTML=buildDamageBlock(1)+buildDamageBlock(2);
+  loadRecords();refreshInspectorSelect();clearForm();
+});
+</script>
+</body>
+</html>
