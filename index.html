@@ -70,7 +70,7 @@
   .record-info .subtitle{font-size:11px;color:var(--text-light);margin-top:2px}
   .record-actions{display:flex;gap:6px;margin-left:8px;flex-shrink:0}
   .record-actions button{width:36px;height:36px;border-radius:8px;border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
-  .btn-edit{background:#ebf5fb;color:var(--primary-light)}
+  .btn-export{background:#fef9e7;color:var(--accent)}
   .btn-delete{background:#fdedec;color:var(--danger)}
   .toast{position:fixed;bottom:calc(70px + var(--safe-bottom));left:16px;right:16px;background:var(--text);color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:500;z-index:300;text-align:center;transform:translateY(120px);transition:transform .3s cubic-bezier(.34,1.56,.64,1);box-shadow:0 4px 20px rgba(0,0,0,.2)}
   .toast.show{transform:translateY(0)}
@@ -106,6 +106,7 @@
     <h1>🌉 橋梁点検記録</h1>
     <div class="header-actions">
       <button class="header-btn" onclick="saveCurrentRecord()">💾 保存</button>
+      <button class="header-btn" onclick="document.getElementById('importFile').click()">📥 取込</button>
       <button class="header-btn export" onclick="exportJSON()">📤 出力</button>
     </div>
   </div>
@@ -114,6 +115,7 @@
     <span id="recordCount">0件</span>
   </div>
 </div>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
 
 <div class="container">
 
@@ -123,12 +125,12 @@
       <div class="card-title"><span class="icon">📋</span> 基本情報</div>
       <div class="form-stack">
         <div class="form-row">
+          <div class="form-group"><label>橋梁名 <span class="req">*</span></label><input type="text" id="bridgeName" placeholder="橋梁名を入力"></div>
+          <div class="form-group"><label>橋梁診断員名 <span class="manage-link" onclick="openModal()">編集</span></label><select id="inspector"><option value="">選択してください</option></select></div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>診断年月日 <span class="req">*</span></label><input type="date" id="inspectionDate"></div>
           <div class="form-group"><label>天候</label><select id="weather"><option value="">選択</option><option>晴れ</option><option>曇り</option><option>雨</option></select></div>
-        </div>
-        <div class="form-group">
-          <label>橋梁診断員名 <span class="manage-link" onclick="openModal()">編集</span></label>
-          <select id="inspector"><option value="">選択してください</option></select>
         </div>
       </div>
     </div>
@@ -273,6 +275,17 @@
     <div id="inspectorList"></div>
     <div class="add-row"><input type="text" id="newInspectorName" placeholder="名前を入力"><button class="add-btn" onclick="addInspector()">追加</button></div>
     <button class="close-btn" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>記録の削除</h3>
+    <p id="deleteMsg" style="font-size:14px;margin-bottom:14px;color:var(--text);">この記録を削除しますか？</p>
+    <div style="display:flex;gap:8px;">
+      <button class="close-btn" style="margin-top:0;flex:1;" onclick="cancelDelete()">キャンセル</button>
+      <button class="add-btn" style="flex:1;background:var(--danger);" onclick="confirmDelete()">削除する</button>
+    </div>
   </div>
 </div>
 
@@ -503,12 +516,22 @@ function switchBlock(num,btn){
 
 // ── Data ──
 function get(id){return document.getElementById(id)?.value||''}
+
+// Generate unique key from bridge name + date
+function makeRecordKey(bridgeName, date){
+  return (bridgeName+'_'+date).replace(/\s+/g,'');
+}
+
 function collectFormData(){
+  const bridgeName=get('bridgeName');
+  const inspDate=get('inspectionDate');
   return {
     id:editingId||Date.now().toString(),
+    recordKey:makeRecordKey(bridgeName, inspDate),
     timestamp:new Date().toISOString(),
     common:{
-      inspectionDate:get('inspectionDate'),weather:get('weather'),inspector:get('inspector'),
+      bridgeName:bridgeName,
+      inspectionDate:inspDate,weather:get('weather'),inspector:get('inspector'),
       quickReport:get('quickReport'),urgency:get('urgency'),
       photoSideDir:get('photoSideDir'),photoSide:get('photoSide'),
       photoBottom:get('photoBottom'),photoDeck:get('photoDeck'),
@@ -543,7 +566,16 @@ function collectBlock(p){
 function populateForm(rec){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};
   const c=rec.common;
-  ['inspectionDate','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
+  // Ensure inspector name exists in dropdown (may come from another device)
+  if(c.inspector){
+    const sel=document.getElementById('inspector');
+    const exists=[...sel.options].some(o=>o.value===c.inspector);
+    if(!exists){
+      const list=loadInspectors();
+      if(!list.includes(c.inspector)){list.push(c.inspector);saveInspectors(list);refreshInspectorSelect()}
+    }
+  }
+  ['bridgeName','inspectionDate','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
    'photoBottom','photoDeck','photoOther','photoOtherNote','thirdPartyPrev','saltDamage',
    'inspRelRemarks','prevRepair','repairDetail','inspectionMethod',
    'memo_yukagumi','memo_shouban','memo_shishou','memo_kabu','memo_kyoumen','memo_other'].forEach(k=>set(k,c[k]));
@@ -577,11 +609,21 @@ function newRecord(){clearForm();switchTab('common',document.querySelectorAll('.
 
 function saveCurrentRecord(){
   const data=collectFormData();
+  if(!data.common.bridgeName){showToast('⚠️ 橋梁名を入力');return}
   if(!data.common.inspectionDate){showToast('⚠️ 診断年月日を入力');return}
-  const idx=records.findIndex(r=>r.id===data.id);
-  if(idx>=0)records[idx]=data;else records.push(data);
+
+  // Same bridge + same date → overwrite with newer data
+  const existIdx=records.findIndex(r=>r.recordKey===data.recordKey);
+  if(existIdx>=0){
+    data.id=records[existIdx].id; // keep original ID
+    records[existIdx]=data;
+    showToast('✅ 上書き保存しました');
+  } else {
+    records.push(data);
+    showToast('✅ 新規保存しました');
+  }
   localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-  updateRecordCount();showToast('✅ 保存しました');clearForm();
+  updateRecordCount();clearForm();
 }
 
 function loadRecords(){try{records=JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{records=[]}updateRecordCount()}
@@ -590,33 +632,56 @@ function updateRecordCount(){document.getElementById('recordCount').textContent=
 function renderRecordList(){
   const c=document.getElementById('recordList');
   if(!records.length){c.innerHTML='<div class="empty-state"><div class="icon">📂</div><p>保存された記録はありません</p></div>';return}
-  c.innerHTML=records.map(r=>{
-    const b1=r.block1;
-    const label=[b1.component,b1.member].filter(Boolean).join(' / ')||'未入力';
+  c.innerHTML=records.map((r,idx)=>{
+    const b1=r.block1||{};
     const urg=r.common.urgency==='有'?'<span style="color:var(--danger);font-weight:700;"> 緊急</span>':'';
+    const bridge=r.common.bridgeName||'（橋梁名なし）';
     return `<div class="record-item">
-      <div class="record-info" onclick="editRecord('${r.id}')">
-        <div class="date">${r.common.inspectionDate} ${r.common.weather||''}${urg}</div>
-        <div class="title">径間${b1.spanNo||'-'} ｜ ${label}</div>
+      <div class="record-info" onclick="editRecordByIdx(${idx})">
+        <div class="title">${bridge}${urg}</div>
+        <div class="date">${r.common.inspectionDate} ${r.common.weather||''}</div>
         <div class="subtitle">${r.common.inspector||''}</div>
       </div>
       <div class="record-actions">
-        <button class="btn-edit" onclick="editRecord('${r.id}')">✏️</button>
-        <button class="btn-delete" onclick="deleteRecord('${r.id}')">🗑️</button>
+        <button class="btn-export" onclick="event.stopPropagation();exportSingleRecord(${idx})">📤</button>
+        <button class="btn-delete" onclick="event.stopPropagation();deleteRecordByIdx(${idx})">🗑️</button>
       </div>
     </div>`;
   }).join('');
 }
-function editRecord(id){
-  const rec=records.find(r=>r.id===id);if(!rec)return;
-  editingId=id;populateForm(rec);
+function editRecordByIdx(idx){
+  const rec=records[idx];if(!rec)return;
+  editingId=rec.id;populateForm(rec);
   switchTab('common',document.querySelectorAll('.tab-item')[0]);showToast('📝 編集モード');
 }
-function deleteRecord(id){
-  if(!confirm('この記録を削除しますか？'))return;
-  records=records.filter(r=>r.id!==id);
+
+function exportSingleRecord(idx){
+  const rec=records[idx];if(!rec)return;
+  const name=rec.common.bridgeName||'bridge';
+  const date=rec.common.inspectionDate||'nodate';
+  const blob=new Blob([JSON.stringify([rec],null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name+'_'+date+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('📤 '+name+' を出力しました');
+}
+let deleteTargetIdx=null;
+function deleteRecordByIdx(idx){
+  deleteTargetIdx=idx;
+  const rec=records[idx];
+  const name=rec?.common?.bridgeName||'';
+  document.getElementById('deleteMsg').textContent=name?`「${name}」を削除しますか？`:'この記録を削除しますか？';
+  document.getElementById('deleteModal').classList.add('show');
+}
+function cancelDelete(){deleteTargetIdx=null;document.getElementById('deleteModal').classList.remove('show')}
+function confirmDelete(){
+  if(deleteTargetIdx===null)return;
+  records.splice(deleteTargetIdx,1);
   localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-  updateRecordCount();renderRecordList();showToast('🗑️ 削除しました');
+  updateRecordCount();renderRecordList();
+  deleteTargetIdx=null;
+  document.getElementById('deleteModal').classList.remove('show');
+  showToast('🗑️ 削除しました');
 }
 
 function exportJSON(){
@@ -625,6 +690,47 @@ function exportJSON(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='bridge_inspection_'+new Date().toISOString().split('T')[0]+'.json';
   a.click();showToast('📤 エクスポート完了');
+}
+
+function importJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const imported=JSON.parse(e.target.result);
+      if(!Array.isArray(imported)){showToast('⚠️ 無効なファイル形式');return}
+      let added=0,updated=0;
+      imported.forEach(rec=>{
+        if(!rec.common)return;
+        // Generate recordKey if missing (backward compat)
+        if(!rec.recordKey && rec.common.bridgeName && rec.common.inspectionDate){
+          rec.recordKey=makeRecordKey(rec.common.bridgeName, rec.common.inspectionDate);
+        }
+        const existIdx=records.findIndex(r=>r.recordKey && r.recordKey===rec.recordKey);
+        if(existIdx>=0){
+          // Compare timestamps - newer wins
+          if(rec.timestamp > records[existIdx].timestamp){
+            records[existIdx]=rec;
+            updated++;
+          }
+        } else {
+          records.push(rec);
+          added++;
+        }
+      });
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
+      updateRecordCount();
+      let msg='📥 ';
+      if(added)msg+=added+'件取込';
+      if(updated)msg+=(added?' / ':'')+updated+'件更新';
+      if(!added&&!updated)msg+='更新なし';
+      showToast(msg);
+      if(document.getElementById('tab-records').classList.contains('active'))renderRecordList();
+    }catch(err){showToast('⚠️ ファイルの読み込みに失敗しました')}
+  };
+  reader.readAsText(file);
+  input.value='';
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
