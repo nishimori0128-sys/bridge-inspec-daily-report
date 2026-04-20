@@ -33,7 +33,7 @@
   .tab-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:.5px solid rgba(0,0,0,.12);display:flex;padding-bottom:var(--safe-bottom);z-index:200}
   .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;font-size:10px;font-weight:500;color:#999;border:none;background:transparent;cursor:pointer;font-family:inherit;gap:2px}
   .tab-item .tab-icon{font-size:22px;line-height:1}
-  .tab-item.active{color:var(--primary)}
+  .tab-item.active{color:var(--primary);background:repeating-linear-gradient(45deg,rgba(41,128,185,.08),rgba(41,128,185,.08) 4px,rgba(41,128,185,.18) 4px,rgba(41,128,185,.18) 8px);border-radius:8px 8px 0 0}
   .container{max-width:100%;padding:12px 14px}
   .tab-content{display:none}.tab-content.active{display:block}
   .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
@@ -78,9 +78,6 @@
   .empty-state .icon{font-size:40px;margin-bottom:10px}
   .conditional-field{display:none}.conditional-field.visible{display:flex}
   .section-sep{height:1px;background:var(--border);margin:2px 0}
-  .fab-new{position:fixed;bottom:calc(72px + var(--safe-bottom));right:16px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:26px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(230,126,34,.4);z-index:150}
-  .fab-new:active{transform:scale(.9)}
-  .fab-new.visible{display:flex}
   .manage-link{font-size:11px;color:var(--primary-light);cursor:pointer;text-decoration:underline;margin-left:6px}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center}
   .modal-overlay.show{display:flex}
@@ -152,7 +149,7 @@
             <option>道路橋の機能に支障が生じていない状態</option>
           </select>
         </div>
-        <div class="form-group"><label>緊急対応の必要性</label><select id="urgency"><option value="">選択</option><option>有</option><option>無</option></select></div>
+        <div class="form-group"><label>緊急対応の必要性</label><select id="urgency"><option value="無">無</option><option>有</option></select></div>
       </div>
     </div>
 
@@ -182,7 +179,7 @@
       <div class="form-stack">
         <div class="form-row">
           <div class="form-group"><label>第三者被害予防措置</label><select id="thirdPartyPrev"><option value="無">無</option><option>有</option><option>対象外</option></select></div>
-          <div class="form-group"><label>塩害特定点検</label><select id="saltDamage"><option value="対象外">対象外</option><option>有</option><option>無</option></select></div>
+          <div class="form-group"><label>塩害特定点検</label><select id="saltDamage"><option value="無">無</option><option>有</option><option>対象外</option></select></div>
         </div>
         <div class="form-group">
           <label>備考（点検関連）</label>
@@ -266,7 +263,6 @@
   <button class="tab-item" onclick="switchTab('damage',this)"><span class="tab-icon">⚠️</span><span>損傷</span></button>
   <button class="tab-item" onclick="switchTab('records',this)"><span class="tab-icon">📂</span><span>一覧</span></button>
 </nav>
-<button class="fab-new" id="fabNew" onclick="newRecord()">＋</button>
 <div class="toast" id="toast"></div>
 
 <div class="modal-overlay" id="inspectorModal">
@@ -503,8 +499,7 @@ function switchTab(tab,btn){
   document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   if(btn)btn.classList.add('active');
-  const fab=document.getElementById('fabNew');
-  if(tab==='records'){renderRecordList();fab.classList.add('visible')}else fab.classList.remove('visible');
+  if(tab==='records')renderRecordList();
   window.scrollTo(0,0);
 }
 function switchBlock(num,btn){
@@ -597,7 +592,8 @@ function clearForm(){
     else if(el.id==='prevRepair')el.value='-';
     else if(el.id==='photoSideDir')el.value='右';
     else if(el.id==='thirdPartyPrev')el.value='無';
-    else if(el.id==='saltDamage')el.value='対象外';
+    else if(el.id==='saltDamage')el.value='無';
+    else if(el.id==='urgency')el.value='無';
     else if(el.id.match(/_(emergency|thirdParty|detailInsp|followUp)$/))el.value='無';
     else el.value='';
   });
@@ -615,7 +611,7 @@ function saveCurrentRecord(){
   // Same bridge + same date → overwrite with newer data
   const existIdx=records.findIndex(r=>r.recordKey===data.recordKey);
   if(existIdx>=0){
-    data.id=records[existIdx].id; // keep original ID
+    data.id=records[existIdx].id;
     records[existIdx]=data;
     showToast('✅ 上書き保存しました');
   } else {
@@ -623,7 +619,9 @@ function saveCurrentRecord(){
     showToast('✅ 新規保存しました');
   }
   localStorage.setItem(STORAGE_KEY,JSON.stringify(records));
-  updateRecordCount();clearForm();
+  updateRecordCount();
+  // Keep current data on screen, update editingId so next save overwrites this record
+  editingId=data.id;
 }
 
 function loadRecords(){try{records=JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{records=[]}updateRecordCount()}
@@ -631,8 +629,13 @@ function updateRecordCount(){document.getElementById('recordCount').textContent=
 
 function renderRecordList(){
   const c=document.getElementById('recordList');
-  if(!records.length){c.innerHTML='<div class="empty-state"><div class="icon">📂</div><p>保存された記録はありません</p></div>';return}
-  c.innerHTML=records.map((r,idx)=>{
+  let html=`<div class="record-item" onclick="newRecord()" style="justify-content:center;cursor:pointer;border:2px dashed var(--primary-light);background:rgba(41,128,185,.04);">
+    <div style="text-align:center;color:var(--primary);font-weight:600;font-size:15px;">＋ 新規作成</div>
+  </div>`;
+  if(!records.length){
+    html+='<div class="empty-state"><div class="icon">📂</div><p>保存された記録はありません</p></div>';
+  } else {
+    html+=records.map((r,idx)=>{
     const b1=r.block1||{};
     const urg=r.common.urgency==='有'?'<span style="color:var(--danger);font-weight:700;"> 緊急</span>':'';
     const bridge=r.common.bridgeName||'（橋梁名なし）';
@@ -648,6 +651,8 @@ function renderRecordList(){
       </div>
     </div>`;
   }).join('');
+  }
+  c.innerHTML=html;
 }
 function editRecordByIdx(idx){
   const rec=records[idx];if(!rec)return;
