@@ -125,8 +125,9 @@
           <div class="form-group"><label>橋梁名 <span class="req">*</span></label><input type="text" id="bridgeName" placeholder="橋梁名を入力"></div>
           <div class="form-group"><label>橋梁診断員名 <span class="manage-link" onclick="openModal()">編集</span></label><select id="inspector"><option value="">選択してください</option></select></div>
         </div>
-        <div class="form-row">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;">
           <div class="form-group"><label>診断年月日 <span class="req">*</span></label><input type="date" id="inspectionDate"></div>
+          <div class="form-group"><label>昼・夜</label><select id="dayNight"><option value="昼">昼</option><option value="夜">夜</option></select></div>
           <div class="form-group"><label>天候</label><select id="weather"><option value="">選択</option><option>晴れ</option><option>曇り</option><option>雨</option></select></div>
         </div>
       </div>
@@ -168,8 +169,12 @@
           <div class="form-group"><label>橋面</label><input type="text" id="photoDeck" placeholder="写真番号"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>その他（番号）</label><input type="text" id="photoOther" placeholder="写真番号"></div>
-          <div class="form-group"><label>その他（記載）</label><input type="text" id="photoOtherNote" placeholder="自由記載"></div>
+          <div class="form-group"><label>その他（番号1）</label><input type="text" id="photoOther1" placeholder="写真番号"></div>
+          <div class="form-group"><label>その他（番号2）</label><input type="text" id="photoOther2" placeholder="写真番号"></div>
+        </div>
+        <div class="form-group">
+          <label>その他（番号）の説明文</label>
+          <input type="text" id="photoOtherNote" placeholder="自由記載">
         </div>
       </div>
     </div>
@@ -441,6 +446,7 @@ function buildDamageBlock(num){
               <option>原因究明のため、詳細調査が必要である。</option>
               <option>進展状況把握のため、追跡調査が必要である。</option>
               <option>原因排除の観点から措置が必要である。</option>
+              <option>措置の必要性は低い。</option>
             </select>
           </div>
         </div>
@@ -526,11 +532,11 @@ function collectFormData(){
     timestamp:new Date().toISOString(),
     common:{
       bridgeName:bridgeName,
-      inspectionDate:inspDate,weather:get('weather'),inspector:get('inspector'),
+      inspectionDate:inspDate,dayNight:get('dayNight'),weather:get('weather'),inspector:get('inspector'),
       quickReport:get('quickReport'),urgency:get('urgency'),
       photoSideDir:get('photoSideDir'),photoSide:get('photoSide'),
       photoBottom:get('photoBottom'),photoDeck:get('photoDeck'),
-      photoOther:get('photoOther'),photoOtherNote:get('photoOtherNote'),
+      photoOther1:get('photoOther1'),photoOther2:get('photoOther2'),photoOtherNote:get('photoOtherNote'),
       thirdPartyPrev:get('thirdPartyPrev'),saltDamage:get('saltDamage'),
       inspRelRemarks:get('inspRelRemarks'),
       prevRepair:get('prevRepair'),repairDetail:get('repairDetail'),
@@ -570,8 +576,8 @@ function populateForm(rec){
       if(!list.includes(c.inspector)){list.push(c.inspector);saveInspectors(list);refreshInspectorSelect()}
     }
   }
-  ['bridgeName','inspectionDate','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
-   'photoBottom','photoDeck','photoOther','photoOtherNote','thirdPartyPrev','saltDamage',
+  ['bridgeName','inspectionDate','dayNight','weather','inspector','quickReport','urgency','photoSideDir','photoSide',
+   'photoBottom','photoDeck','photoOther1','photoOther2','photoOtherNote','thirdPartyPrev','saltDamage',
    'inspRelRemarks','prevRepair','repairDetail','inspectionMethod',
    'memo_yukagumi','memo_shouban','memo_shishou','memo_kabu','memo_kyoumen','memo_other'].forEach(k=>set(k,c[k]));
   set('commonRemarks2',c.remarks2);
@@ -591,6 +597,7 @@ function clearForm(){
     else if(el.id==='inspRelRemarks'||el.id==='repairDetail')el.value='-';
     else if(el.id==='prevRepair')el.value='-';
     else if(el.id==='photoSideDir')el.value='右';
+    else if(el.id==='dayNight')el.value='昼';
     else if(el.id==='thirdPartyPrev')el.value='無';
     else if(el.id==='saltDamage')el.value='無';
     else if(el.id==='urgency')el.value='無';
