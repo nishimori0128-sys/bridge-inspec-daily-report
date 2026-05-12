@@ -697,11 +697,17 @@ function confirmDelete(){
 }
 
 function exportJSON(){
-  if(!records.length){showToast('⚠️ 記録がありません');return}
-  const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});
+  // Export the currently editing record
+  const data=collectFormData();
+  if(!data.common.bridgeName){showToast('⚠️ 橋梁名を入力してください');return}
+  if(!data.common.inspectionDate){showToast('⚠️ 診断年月日を入力してください');return}
+  const name=data.common.bridgeName;
+  const date=data.common.inspectionDate;
+  const blob=new Blob([JSON.stringify([data],null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='bridge_inspection_'+new Date().toISOString().split('T')[0]+'.json';
-  a.click();showToast('📤 エクスポート完了');
+  a.download=name+'_'+date+'.json';
+  a.click();URL.revokeObjectURL(a.href);
+  showToast('📤 '+name+' を出力しました');
 }
 
 function importJSON(input){
