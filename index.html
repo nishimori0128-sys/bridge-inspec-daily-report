@@ -708,10 +708,7 @@ async function shareFile(filename, jsonStr, displayName){
   // Web Share APIが使えるか＋ファイル共有に対応しているか
   if(navigator.canShare && navigator.canShare({files:[file]})){
     try{
-      await navigator.share({
-        title: displayName+' 点検データ',
-        files: [file]
-      });
+      await navigator.share({files:[file]});
       showToast('📤 '+displayName+' を共有しました');
     }catch(e){
       if(e.name!=='AbortError') showToast('⚠️ 共有がキャンセルされました');

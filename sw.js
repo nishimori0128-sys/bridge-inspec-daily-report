@@ -2,7 +2,7 @@
 // Service Worker - 橋梁点検記録 PWA
 // =============================================
 // ★ アプリ更新時はこのバージョン番号を上げてください ★
-const CACHE_VERSION = 'v2.1.0';
+const CACHE_VERSION = 'v2.2.0';
 const CACHE_NAME = 'bridge-inspection-' + CACHE_VERSION;
 
 // キャッシュするファイル一覧
